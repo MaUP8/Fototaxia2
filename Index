@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subtítulos con Cámara y Captura de Voz</title>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    #camera {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    #transcription {
+      position: fixed;
+      bottom: 20%;
+      left: 50%;
+      width: 80vw;
+      transform: translateX(-50%);
+      font-size: 6vw;
+      line-height: 1.5;
+      text-align: center;
+      padding: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      border-radius: 10px;
+      color: white;
+    }
+
+    #settings {
+      position: fixed;
+      top: 10%;
+      left: 10%;
+      width: 80%;
+      max-width: 300px;
+      background-color: rgba(0, 0, 0, 0.9);
+      padding: 20px;
+      border-radius: 10px;
+      display: none;
+      z-index: 10;
+      color: white;
+    }
+
+    #settings label {
+      display: block;
+      font-size: 14px;
+      margin-top: 10px;
+      color: #ddd;
+    }
+
+    #settings input {
+      width: 100%;
+      padding: 5px;
+      margin-top: 5px;
+      font-size: 14px;
+      color: black;
+    }
+
+    #popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80vw;
+      max-width: 600px;
+      background-color: rgba(0, 0, 0, 0.9);
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      z-index: 100;
+    }
+
+    #popup iframe {
+      width: 100%;
+      height: 315px;
+      border: none;
+    }
+
+    #popup p {
+      font-size: 18px;
+      color: white;
+      margin: 10px 0;
+    }
+
+    #popup button {
+      font-size: 16px;
+      background-color: #333;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <video id="camera" autoplay playsinline></video>
+  <div id="transcription">
+    <p id="text"></p>
+  </div>
+
+  <div id="settings">
+    <label for="popup1Delay">Tiempo para mostrar el primer pop-up (segundos):</label>
+    <input type="number" id="popup1Delay" min="1" value="10" />
+
+    <label for="video1URL">URL del primer video de YouTube:</label>
+    <input type="url" id="video1URL" placeholder="https://youtu.be/VIDEO_ID" required />
+
+    <label for="popup2Delay">Tiempo para mostrar el segundo pop-up (segundos):</label>
+    <input type="number" id="popup2Delay" min="1" value="20" />
+
+    <label for="video2URL">URL del segundo video de YouTube:</label>
+    <input type="url" id="video2URL" placeholder="https://youtu.be/VIDEO_ID" required />
+
+    <button id="startSettingsBtn">Guardar y Comenzar</button>
+  </div>
+
+  <!-- Pop-up de anuncio -->
+  <div id="popup1" class="popup">
+    <iframe id="adVideo1" allow="autoplay"></iframe>
+    <button id="closePopup1Btn">Cerrar</button>
+  </div>
+
+  <div id="popup2" class="popup">
+    <iframe id="adVideo2" allow="autoplay"></iframe>
+    <button id="closePopup2Btn">Cerrar</button>
+  </div>
+
+  <script>
+    let popup1Timer, popup2Timer;
+    let video1URL = "", video2URL = "";
+
+    function initCamera() {
+      const video = document.getElementById('camera');
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          video.srcObject = stream;
+        })
+        .catch(err => {
+          console.error('Error al acceder a la cámara: ' + err);
+        });
+    }
+
+    function showPopup(popupId, videoURL) {
+      const popup = document.getElementById(popupId);
+      const videoFrame = popup.querySelector("iframe");
+      videoFrame.src = videoURL;
+      popup.style.display = "block";
+    }
+
+    function closePopup(popupId) {
+      const popup = document.getElementById(popupId);
+      const videoFrame = popup.querySelector("iframe");
+      videoFrame.src = "";
+      popup.style.display = "none";
+    }
+
+    function convertYouTubeURL(url) {
+      let videoId;
+      if (url.includes("youtu.be/")) {
+        videoId = url.split("youtu.be/")[1].split("?")[0];
+      } else if (url.includes("youtube.com/watch?v=")) {
+        videoId = url.split("watch?v=")[1].split("&")[0];
+      }
+      return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0` : url;
+    }
+
+    document.getElementById("startSettingsBtn").addEventListener("click", () => {
+      const delay1 = parseInt(document.getElementById("popup1Delay").value) * 1000;
+      const delay2 = parseInt(document.getElementById("popup2Delay").value) * 1000;
+      video1URL = convertYouTubeURL(document.getElementById("video1URL").value);
+      video2URL = convertYouTubeURL(document.getElementById("video2URL").value);
+
+      document.getElementById("settings").style.display = "none";
+
+      // Configura los temporizadores para mostrar los pop-ups
+      popup1Timer = setTimeout(() => showPopup("popup1", video1URL), delay1);
+      popup2Timer = setTimeout(() => showPopup("popup2", video2URL), delay2);
+    });
+
+    document.getElementById("closePopup1Btn").addEventListener("click", () => {
+      closePopup("popup1");
+    });
+
+    document.getElementById("closePopup2Btn").addEventListener("click", () => {
+      closePopup("popup2");
+    });
+
+    window.onload = () => {
+      document.getElementById("settings").style.display = "block";
+      initCamera();
+    };
+  </script>
+</body>
+</html>
